@@ -114,6 +114,6 @@ chrome.runtime.sendMessage(
 
 ## 原始碼授權
 
-目前公開原始碼只供透明度、安全審查及個人檢視。除非 repository 日後加入明確的開源授權，否則不代表授權第三方重新包裝、重新發佈、冒充官方版本或使用 HKTR／TrRedeem 品牌素材。
+本專案採用保留權利的 source-available 聲明，並非開源授權。公開原始碼只供透明度、安全審查及個人檢視；不授權第三方複製、修改、重新包裝、重新發佈、製作衍生作品、冒充官方版本，或使用 HKTR／TrRedeem 品牌素材。完整條款請參閱 [LICENSE](LICENSE)。
 
-Copyright © HKTR contributors. All rights reserved.
+Copyright © 2026 HKTR contributors. All rights reserved.
