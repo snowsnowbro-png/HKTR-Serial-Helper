@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-HK">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HKTR 序號助手</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header class="brand">
+        <img src="icons/popup-logo.png" alt="TrRedeem／HKTR 序號助手標誌" width="96" height="96">
+        <div>
+          <h1>HKTR 序號助手</h1>
+          <p class="brand-subtitle">跑Online 序號兌換小助手</p>
+        </div>
+      </header>
+      <p class="intro">安全儲存多個帳號。從 HKTR 網站選擇序號後，助手會協助填寫官方兌換頁；驗證碼及提交必須由你親自完成。</p>
+
+      <section id="setup-panel" class="security-panel hidden" aria-labelledby="setup-title">
+        <h2 id="setup-title">開始使用</h2>
+        <p>玩家帳號、密碼及序號只用作填寫官方兌換頁，會以此 Chrome 使用者設定檔專用的 AES-256-GCM 金鑰加密。</p>
+        <p>資料不會傳送到 HKTR、Base44 或其他伺服器；驗證碼及提交仍由你親自完成。</p>
+        <form id="setup-form" novalidate>
+          <button class="primary" type="submit">同意並開始使用</button>
+        </form>
+      </section>
+
+      <section id="migration-panel" class="security-panel hidden" aria-labelledby="migration-title">
+        <h2 id="migration-title">一次過轉用簡易模式</h2>
+        <p>輸入一次現有主密碼，助手會把資料轉為裝置專用加密。完成後不再需要解鎖。</p>
+        <form id="migration-form" novalidate>
+          <label for="migration-password">現有主密碼</label>
+          <input id="migration-password" type="password" autocomplete="current-password" maxlength="128" required>
+          <button class="primary" type="submit">轉用簡易模式</button>
+        </form>
+      </section>
+
+      <section id="recovery-panel" class="security-panel hidden" aria-labelledby="recovery-title">
+        <h2 id="recovery-title">裝置金鑰無法使用</h2>
+        <p>Chrome 設定檔內的裝置金鑰可能已被清除，因此舊有加密資料無法復原。請清除資料後重新設定。</p>
+      </section>
+
+      <section id="app-panel" class="hidden">
+        <div class="vault-bar">
+          <span>✓ 資料已在此 Chrome 設定檔加密</span>
+        </div>
+
+        <section class="account-picker" aria-labelledby="saved-account-label">
+          <label id="saved-account-label" for="saved-account">目前使用帳號</label>
+          <select id="saved-account"></select>
+          <div class="button-row">
+            <button id="new-account" type="button">新增帳號</button>
+            <button id="remove-account" class="danger" type="button">刪除目前帳號</button>
+          </div>
+        </section>
+
+        <form id="details-form" novalidate>
+          <label for="account">玩家帳號</label>
+          <input id="account" name="account" type="text" autocomplete="username" maxlength="30" required>
+
+          <label for="password">玩家密碼</label>
+          <input id="password" name="password" type="password" autocomplete="off" maxlength="30" required>
+
+          <button class="primary" type="submit">儲存／更新帳號</button>
+        </form>
+
+        <button id="open-page" type="button">開啟官方兌換頁</button>
+      </section>
+
+      <button id="clear-data" class="danger" type="button">清除已儲存資料</button>
+
+      <p id="status" role="status" aria-live="polite"></p>
+      <p class="privacy">使用不可匯出的裝置專用 AES-256-GCM 金鑰；無須另設主密碼。</p>
+    </main>
+    <script src="crypto-utils.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

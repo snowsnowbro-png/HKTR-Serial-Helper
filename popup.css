@@ -1,0 +1,181 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "PingFang HK", "Noto Sans TC", sans-serif;
+  color: #172033;
+  background: #f4f7fb;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+}
+
+main {
+  padding: 18px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.brand img {
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.brand-subtitle {
+  margin: 3px 0 0;
+  color: #b43a16;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.intro,
+.privacy {
+  color: #526078;
+  line-height: 1.5;
+}
+
+.intro {
+  margin: 0 0 16px;
+}
+
+.security-panel {
+  padding: 13px;
+  border: 1px solid #d5dce7;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(25, 50, 85, 0.08);
+}
+
+.security-panel p {
+  margin: 6px 0;
+  color: #526078;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.security-panel .warning {
+  color: #9a4d0c;
+  font-weight: 700;
+}
+
+.vault-bar {
+  text-align: center;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid #aad6b8;
+  border-radius: 8px;
+  background: #effaf2;
+  color: #176235;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+label {
+  display: block;
+  margin: 11px 0 5px;
+  font-weight: 650;
+}
+
+input,
+select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #aab4c5;
+  border-radius: 7px;
+  font: inherit;
+}
+
+input:focus,
+select:focus {
+  border-color: #1769e0;
+  outline: 3px solid #d9e8ff;
+}
+
+.account-picker {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #d5dce7;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+button {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #97a4b8;
+  border-radius: 7px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #edf3fb;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.primary {
+  border-color: #1769e0;
+  background: #1769e0;
+  color: #fff;
+}
+
+.primary:hover {
+  background: #0d57bf;
+}
+
+.danger {
+  border-color: #b82b3a;
+  color: #9a1f2d;
+}
+
+#status {
+  min-height: 20px;
+  margin: 12px 0 0;
+  font-weight: 650;
+}
+
+#status.error {
+  color: #a51f2d;
+}
+
+#status.success {
+  color: #17723b;
+}
+
+.privacy {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
