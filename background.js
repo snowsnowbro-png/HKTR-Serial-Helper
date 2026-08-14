@@ -7,6 +7,10 @@ const ALLOWED_ORIGINS = new Set(["https://hktr.uk", "https://www.hktr.uk"]);
 const EXPECTED_EXTERNAL_FIELDS = ["action", "serialCode"];
 const MAX_FIELD_LENGTH = 30;
 const DEVICE_VAULT_MODE = "device-v1";
+const MAX_REDEMPTION_HISTORY = 50;
+const PENDING_RESULT_WINDOW_MS = 15 * 60 * 1000;
+const OFFICIAL_FORM_URL = REDEMPTION_URL;
+const OFFICIAL_RESULT_URL = "https://trevent.funtown.com.hk/serial/app/serial_code_handler.php";
 
 function objectHasExactFields(value, expectedFields) {
   if (
@@ -59,6 +63,51 @@ function sanitizeSerialCode(value) {
   return serialCode;
 }
 
+function sanitizeAccount(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const account = value.trim();
+  if (
+    account.length === 0 ||
+    account.length > MAX_FIELD_LENGTH ||
+    /[\u0000-\u001F\u007F]/u.test(account)
+  ) {
+    return null;
+  }
+  return account;
+}
+
+function senderIsExactPage(sender, expectedUrl) {
+  if (typeof sender?.url !== "string") {
+    return false;
+  }
+  try {
+    const url = new URL(sender.url);
+    const expected = new URL(expectedUrl);
+    return url.origin === expected.origin && url.pathname === expected.pathname;
+  } catch {
+    return false;
+  }
+}
+
+function classifyOfficialResult(resultText) {
+  if (typeof resultText !== "string") {
+    return "failed";
+  }
+  const text = resultText.replace(/\s+/gu, " ").trim().slice(0, 500);
+  if (/序號.{0,12}(?:已使用|已被使用|已兌換|使用過)/u.test(text)) {
+    return "already-used";
+  }
+  if (
+    !/(?:不成功|未成功|失敗|錯誤)/u.test(text) &&
+    /(?:兌換成功|成功兌換|領取成功|成功領取|兌換完成)/u.test(text)
+  ) {
+    return "redeemed";
+  }
+  return "failed";
+}
+
 function isEncryptedProfile(profile) {
   return (
     profile !== null &&
@@ -84,6 +133,53 @@ async function decryptProfile(profile, key) {
     throw new Error("Invalid credentials");
   }
   return credentials;
+}
+
+async function loadRedemptionHistory(key) {
+  const saved = await chrome.storage.local.get("redemptionHistory");
+  const encryptedEntries = Array.isArray(saved.redemptionHistory)
+    ? saved.redemptionHistory.slice(0, MAX_REDEMPTION_HISTORY)
+    : [];
+  const entries = [];
+  for (const item of encryptedEntries) {
+    if (!item || typeof item.id !== "string" || !HKTRCrypto.isEncryptedValue(item.encryptedRecord)) {
+      continue;
+    }
+    try {
+      const record = JSON.parse(await HKTRCrypto.decryptText(item.encryptedRecord, key));
+      if (
+        sanitizeAccount(record.account) &&
+        sanitizeSerialCode(record.serialCode) &&
+        ["pending", "redeemed", "already-used"].includes(record.status) &&
+        typeof record.attemptedAt === "string"
+      ) {
+        entries.push({ id: item.id, record });
+      }
+    } catch {
+      // 忽略個別損壞的歷史記錄，不影響主要填表功能。
+    }
+  }
+  return entries;
+}
+
+async function saveRedemptionHistory(entries, key) {
+  const encryptedEntries = [];
+  for (const entry of entries.slice(0, MAX_REDEMPTION_HISTORY)) {
+    encryptedEntries.push({
+      id: entry.id,
+      encryptedRecord: await HKTRCrypto.encryptText(JSON.stringify(entry.record), key)
+    });
+  }
+  await chrome.storage.local.set({ redemptionHistory: encryptedEntries });
+}
+
+function findMatchingRedemption(entries, account, serialCode) {
+  return entries.find(
+    ({ record }) =>
+      record.account.toLocaleLowerCase("en-US") === account.toLocaleLowerCase("en-US") &&
+      record.serialCode === serialCode &&
+      ["pending", "redeemed", "already-used"].includes(record.status)
+  );
 }
 
 // 只接受來自本 extension 內容程式／popup 的內部訊息。
@@ -173,6 +269,85 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const credentials = await decryptProfile(selected, key);
         await chrome.storage.local.set({ activeAccountId: selected.id });
         sendResponse({ success: true, credentials });
+        return;
+      }
+
+      if (objectHasExactFields(message, ["action", "account", "serialCode"]) &&
+          message.action === "getRedemptionStatus" &&
+          senderIsExactPage(sender, OFFICIAL_FORM_URL)) {
+        const account = sanitizeAccount(message.account);
+        const serialCode = sanitizeSerialCode(message.serialCode);
+        const key = await HKTRCrypto.getDeviceKey();
+        if (!account || !serialCode || !key) {
+          sendResponse({ success: false, error: "未能檢查兌換記錄。" });
+          return;
+        }
+        const match = findMatchingRedemption(
+          await loadRedemptionHistory(key), account, serialCode
+        );
+        sendResponse({
+          success: true,
+          status: match?.record.status ?? null,
+          attemptedAt: match?.record.attemptedAt ?? null
+        });
+        return;
+      }
+
+      if (objectHasExactFields(message, ["action", "account", "serialCode"]) &&
+          message.action === "recordRedemptionAttempt" &&
+          senderIsExactPage(sender, OFFICIAL_FORM_URL)) {
+        const account = sanitizeAccount(message.account);
+        const serialCode = sanitizeSerialCode(message.serialCode);
+        const key = await HKTRCrypto.getDeviceKey();
+        if (!account || !serialCode || !key) {
+          sendResponse({ success: false, error: "未能記錄兌換嘗試。" });
+          return;
+        }
+        const entries = await loadRedemptionHistory(key);
+        const previous = findMatchingRedemption(entries, account, serialCode);
+        if (previous && ["redeemed", "already-used"].includes(previous.record.status)) {
+          sendResponse({ success: true, status: previous.record.status });
+          return;
+        }
+        const now = new Date().toISOString();
+        const next = entries.filter(({ id }) => id !== previous?.id);
+        next.unshift({
+          id: crypto.randomUUID(),
+          record: { account, serialCode, status: "pending", attemptedAt: now, updatedAt: now }
+        });
+        await saveRedemptionHistory(next, key);
+        sendResponse({ success: true, status: "pending" });
+        return;
+      }
+
+      if (objectHasExactFields(message, ["action", "resultText"]) &&
+          message.action === "recordRedemptionResult" &&
+          typeof message.resultText === "string" &&
+          senderIsExactPage(sender, OFFICIAL_RESULT_URL)) {
+        const key = await HKTRCrypto.getDeviceKey();
+        if (!key) {
+          sendResponse({ success: false, error: "未能記錄兌換結果。" });
+          return;
+        }
+        const entries = await loadRedemptionHistory(key);
+        const cutoff = Date.now() - PENDING_RESULT_WINDOW_MS;
+        const pendingIndex = entries.findIndex(
+          ({ record }) =>
+            record.status === "pending" && Date.parse(record.attemptedAt) >= cutoff
+        );
+        if (pendingIndex === -1) {
+          sendResponse({ success: true, status: null });
+          return;
+        }
+        const status = classifyOfficialResult(message.resultText);
+        if (status === "failed") {
+          entries.splice(pendingIndex, 1);
+        } else {
+          entries[pendingIndex].record.status = status;
+          entries[pendingIndex].record.updatedAt = new Date().toISOString();
+        }
+        await saveRedemptionHistory(entries, key);
+        sendResponse({ success: true, status });
         return;
       }
 

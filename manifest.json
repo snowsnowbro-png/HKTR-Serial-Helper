@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "HKTR 序號助手",
   "description": "協助香港《跑Online》玩家加密儲存帳號，並在官方頁面填寫序號兌換資料。",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "minimum_chrome_version": "102",
   "homepage_url": "https://hktr.uk/trredeem",
   "icons": {
@@ -33,6 +33,11 @@
     {
       "matches": ["https://trevent.funtown.com.hk/serial/app/serial_code.php"],
       "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://trevent.funtown.com.hk/serial/app/serial_code_handler.php"],
+      "js": ["result.js"],
       "run_at": "document_idle"
     }
   ],

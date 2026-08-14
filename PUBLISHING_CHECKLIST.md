@@ -1,0 +1,21 @@
+# Chrome Web Store 發佈檢查表
+
+- [ ] 在 `PRIVACY_POLICY.md` 填寫發佈者名稱及聯絡電郵
+- [ ] 將私隱政策發佈到 `https://hktr.uk/trredeem/privacy`
+- [ ] 重新載入 extension，確認首次只需按一次同意即可使用
+- [ ] 測試舊版明文資料自動遷移，以及 2.0 主密碼庫一次性轉換
+- [ ] 關閉再開 Chrome 後，確認帳號、密碼及序號仍可正常填寫而毋須解鎖
+- [ ] 清除資料後確認裝置金鑰及所有密文一併刪除
+- [ ] 確認切換帳號不會清除序號
+- [ ] 確認 CAPTCHA 及提交保持手動
+- [ ] 測試 hktr.uk 成功傳入序號
+- [ ] 確認 popup 只要求帳號及密碼，並會保留 hktr.uk 傳入的序號
+- [ ] 成功兌換後返回相同帳號及序號，確認顯示「已經兌換過」提醒
+- [ ] 測試 CAPTCHA／帳號／序號錯誤，確認不會誤標示為已兌換
+- [ ] 在 Chrome Web Store Privacy 頁更新官方結果頁 host permission 說明及兌換狀態資料披露
+- [ ] 準備 Chrome Web Store 截圖及支援網址
+- [ ] 註冊 Chrome Web Store Developer Account
+- [ ] 上載 ZIP，取得 Chrome Web Store Item ID
+- [ ] 將 hktr.uk 內的 extension ID 換成正式 Item ID
+- [ ] 完成 Store listing、Privacy practices 及 Distribution
+- [ ] 提交審核

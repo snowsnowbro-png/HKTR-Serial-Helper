@@ -6,6 +6,8 @@
  * ================================================================
  * 每個欄位依次嘗試 selector。主要 selector 使用穩定的 name 及 type
  * 屬性；placeholder 只作後備。這裡刻意沒有 CAPTCHA 或提交按鈕。
+ * 官方表格實際 id 是 serial；只監聽 submit 事件作本機防重提醒，
+ * 不會阻止、觸發或自動提交表格。
  */
 const FORM_SELECTORS = Object.freeze({
   account: Object.freeze([
@@ -23,6 +25,7 @@ const FORM_SELECTORS = Object.freeze({
 });
 
 const MAX_FIELD_LENGTH = 30;
+const OFFICIAL_FORM_SELECTOR = 'form#serial[name="serial"]';
 
 // 確認三組 selector 都已設定，避免誤選頁面元素。
 function selectorsAreConfigured() {
@@ -88,6 +91,83 @@ function setInputValue(element, value) {
   element.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+function getRedemptionWarningHost(serialCodeField) {
+  let host = document.querySelector("#hktr-redemption-warning-host");
+  if (host) {
+    return host;
+  }
+  host = document.createElement("div");
+  host.id = "hktr-redemption-warning-host";
+  host.style.display = "none";
+  host.style.width = "340px";
+  host.style.maxWidth = "100%";
+  host.style.margin = "10px auto 0";
+  const shadow = host.attachShadow({ mode: "open" });
+  const notice = document.createElement("div");
+  notice.setAttribute("role", "alert");
+  notice.style.cssText = `
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 2px solid #d93b4a;
+    border-radius: 10px;
+    background: #fff1f2;
+    color: #8d1825;
+    font: 700 13px/1.5 system-ui, -apple-system, "PingFang HK", "Noto Sans TC", sans-serif;
+    text-align: left;
+  `;
+  shadow.append(notice);
+  serialCodeField.insertAdjacentElement("afterend", host);
+  return host;
+}
+
+async function updateRedemptionWarning(account, serialCode, serialCodeField) {
+  const host = getRedemptionWarningHost(serialCodeField);
+  const notice = host.shadowRoot?.querySelector('[role="alert"]');
+  if (!notice || !account?.trim() || !serialCodeIsValid(serialCode)) {
+    host.style.display = "none";
+    return;
+  }
+  try {
+    const response = await sendInternalMessage({
+      action: "getRedemptionStatus",
+      account: account.trim(),
+      serialCode: serialCode.trim()
+    });
+    if (response?.status === "redeemed" || response?.status === "already-used") {
+      notice.textContent = "⚠️ 提醒：呢個帳號已經兌換過此序號，請勿重複提交。";
+      host.style.display = "block";
+    } else if (response?.status === "pending") {
+      notice.textContent = "⚠️ 呢個帳號最近提交過此序號，請先確認上次結果，避免重複提交。";
+      host.style.display = "block";
+    } else {
+      host.style.display = "none";
+    }
+  } catch {
+    host.style.display = "none";
+  }
+}
+
+function watchManualSubmission(accountField, serialCodeField) {
+  const form = document.querySelector(OFFICIAL_FORM_SELECTOR);
+  if (!(form instanceof HTMLFormElement) || form.dataset.hktrAttemptWatcher === "1") {
+    return;
+  }
+  form.dataset.hktrAttemptWatcher = "1";
+  form.addEventListener("submit", () => {
+    const account = accountField.value.trim();
+    const serialCode = serialCodeField.value.trim();
+    if (!account || !serialCodeIsValid(serialCode)) {
+      return;
+    }
+    // 只記錄使用者自己觸發的提交；不阻止、不觸發亦不等待官方表格。
+    chrome.runtime.sendMessage({
+      action: "recordRedemptionAttempt",
+      account,
+      serialCode
+    });
+  }, { capture: true });
+}
+
 // 在官方帳號欄上方加入 extension 自己的帳號選單。
 // 選單使用 Shadow DOM，避免官方頁面的 CSS 改壞版面。
 function addAccountSwitcher(
@@ -96,7 +176,8 @@ function addAccountSwitcher(
   locked,
   setupRequired,
   accountField,
-  passwordField
+  passwordField,
+  serialCodeField
 ) {
   if (document.querySelector("#hktr-account-switcher-host")) {
     return;
@@ -281,6 +362,11 @@ function addAccountSwitcher(
       setInputValue(accountField, response.credentials.account.trim());
       setInputValue(passwordField, response.credentials.password);
       status.textContent = "帳號已切換，原有序號已保留。";
+      await updateRedemptionWarning(
+        response.credentials.account,
+        serialCodeField.value,
+        serialCodeField
+      );
     } catch {
       status.textContent = "未能切換帳號，請重新整理頁面再試。";
     }
@@ -320,7 +406,8 @@ async function fillRedemptionForm() {
       response.locked === true,
       response.setupRequired === true,
       accountField,
-      passwordField
+      passwordField,
+      serialCodeField
     );
 
     if (response.credentials) {
@@ -331,6 +418,15 @@ async function fillRedemptionForm() {
     if (serialCodeIsValid(response.serialCode)) {
       setInputValue(serialCodeField, response.serialCode.trim());
     }
+
+    if (response.credentials && serialCodeIsValid(response.serialCode)) {
+      await updateRedemptionWarning(
+        response.credentials.account,
+        response.serialCode,
+        serialCodeField
+      );
+    }
+    watchManualSubmission(accountField, serialCodeField);
 
     // 刻意不讀取、不處理驗證碼，亦不會提交表格。
     console.info("HKTR 序號助手：已加入帳號選單，請自行輸入驗證碼並提交。 ");

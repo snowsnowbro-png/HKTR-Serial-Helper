@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Chrome Web Store release archives are generated artifacts.
+*.zip
+
+# Marketing screenshots and their local generation inputs are not extension source.
+store-assets/
+tools/
+
+# Editor and temporary files
+.vscode/
+.idea/
+*.swp
+*~
+
